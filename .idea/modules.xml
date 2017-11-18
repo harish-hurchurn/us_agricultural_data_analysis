@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/us_crop_progress.iml" filepath="$PROJECT_DIR$/.idea/us_crop_progress.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/us_crop_progress-build.iml" filepath="$PROJECT_DIR$/.idea/modules/us_crop_progress-build.iml" />
+    </modules>
+  </component>
+</project>
