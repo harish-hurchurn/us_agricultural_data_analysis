@@ -109,7 +109,7 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
 
       rows.toList
     }
-    
+
 
     /**
       * Writes the contents to a file on disk 
@@ -139,15 +139,29 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
     var array = ArrayBuffer[Array[String]]()
 
     convertFileToUtf8(s"$destinationPath/$originalFile", s"$destinationPath/$newFile")
-    
-    val headerArray = ArrayBuffer[String]()
+
+    val headerArray = ArrayBuffer[Array[String]]()
 
 
-    def headerProcessing(header: ArrayBuffer[String], array: Array[String]): Unit = {
-      println(array.mkString)
-      
+    def headerProcessing(header: ArrayBuffer[Array[String]], array: Array[String]): Unit = {
       if (!array.mkString.matches("""^[h,\S*]+$""")) {
-        headerArray += array.mkString
+
+        if (array.mkString.contains("Week ending")) {
+          header += Array("Week ending")
+        }
+
+        if (array.mkString.contains("State"))
+          header += Array("State")
+
+        // If we encounter any months of the year followed by a digit then find the Week Ending array and create a new element in that array
+        if (array.mkString.contains("November")) {
+          headerArray.zipWithIndex.foreach {
+            case (weekEndingArray: Array[String], index: Int) ⇒
+              if (weekEndingArray.mkString == "Week ending") {
+                headerArray(index) = weekEndingArray :+ "testing"
+              }
+          }
+        }
       }
     }
 
