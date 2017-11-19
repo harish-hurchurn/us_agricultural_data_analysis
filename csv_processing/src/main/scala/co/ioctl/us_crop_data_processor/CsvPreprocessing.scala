@@ -152,13 +152,25 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
 
         if (array.mkString.contains("State"))
           header += Array("State")
-
-        // If we encounter any months of the year followed by a digit then find the Week Ending array and create a new element in that array
-        if (array.mkString.contains("November")) {
+        
+        //
+        // Have to do some hackery here in order to put all of the columns which are related to Week ending in one column
+        //
+        val dayOfMonthRegEx = """(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,}""".r // Regular expression to match the month with the day and comma
+        val monthAndDayMatch = dayOfMonthRegEx.findAllIn(array.mkString)
+        
+        if (monthAndDayMatch.length == 3) {
           headerArray.zipWithIndex.foreach {
             case (weekEndingArray: Array[String], index: Int) ⇒
               if (weekEndingArray.mkString == "Week ending") {
-                headerArray(index) = weekEndingArray :+ "testing"
+
+                var arrayBuffer = ArrayBuffer[String](weekEndingArray(0))
+                
+                dayOfMonthRegEx.findAllIn(array.mkString).toList.foreach { line ⇒
+                  arrayBuffer += line
+                }
+                
+                headerArray(index) = arrayBuffer.toArray 
               }
           }
         }
