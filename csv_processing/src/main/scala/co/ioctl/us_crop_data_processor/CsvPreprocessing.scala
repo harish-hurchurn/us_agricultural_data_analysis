@@ -135,11 +135,9 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
           }
       }
     }
-
-
+    
     convertFileToUtf8(s"$destinationPath/$originalFile", s"$destinationPath/$newFile")
-
-
+    
     def processHeader(header: ArrayBuffer[Array[String]], array: Array[String]): Unit = {
       val stringifiedArray = array.mkString("", ",", "")
 
@@ -194,12 +192,18 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
           header.zipWithIndex.foreach {
             case (weekEndingArray: Array[String], index: Int) ⇒
               if (weekEndingArray.mkString.contains("Week ending")) {
-                
+
                 val t = yearsRegex.findAllIn(prepared).toArray.mkString("", " ", "").split(",")
+
+                import java.time.LocalDate
+                import java.time.format.DateTimeFormatter
+                import java.util.Locale
                 
-                header(0)(1) = header(0)(1).concat(" " + t(0))
-                header(0)(2) = header(0)(2).concat(" " + t(1))
-                header(0)(3) = header(0)(3).concat(" " + t(2))
+                val formatter = DateTimeFormatter.ofPattern("MMMM d yyyy", Locale.ENGLISH)
+                
+                header(0)(1) = LocalDate.parse(header(0)(1).concat(" " + t(0)), formatter).toString
+                header(0)(2) = LocalDate.parse(header(0)(2).concat(" " + t(1)), formatter).toString
+                header(0)(3) = LocalDate.parse(header(0)(3).concat(" " + t(2)), formatter).toString
               }
           }
         }
