@@ -10,29 +10,6 @@ import scala.collection.mutable.ArrayBuffer
   */
 case class UsAggricultureDataFileUtils(destinationPath: String) {
   /**
-    * A utility to convert a files contents to UTF8
-    *
-    * @param originalFile The name and path of the original file which is to be converted
-    * @param newfile      The name and path where the newly converted file is to be stored
-    */
-  def convertFileToUtf8(originalFile: String, newfile: String): Unit = {
-    try {
-      import java.io.{FileInputStream, FileOutputStream}
-      val fis = new FileInputStream(originalFile)
-      val contents = new Array[Byte](fis.available)
-      fis.read(contents, 0, contents.length)
-      val asString = new String(contents, "ISO8859_1")
-      val newBytes = asString.getBytes("UTF8")
-      val fos = new FileOutputStream(newfile)
-      fos.write(newBytes)
-      fos.close()
-    } catch {
-      case e: Exception ⇒
-        e.printStackTrace()
-    }
-  }
-
-  /**
     * Will download the US Agriculture data.
     */
   def downloadData(): Unit = {
@@ -82,6 +59,29 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
     * @return A List of CSV lines which we are interested in
     */
   def sanitizeCsvFile(originalFile: String, newFile: String): Unit = {
+    /**
+      * A utility to convert a files contents to UTF8
+      *
+      * @param originalFile The name and path of the original file which is to be converted
+      * @param newfile      The name and path where the newly converted file is to be stored
+      */
+    def convertFileToUtf8(originalFile: String, newfile: String): Unit = {
+      try {
+        import java.io.{FileInputStream, FileOutputStream}
+        val fis = new FileInputStream(originalFile)
+        val contents = new Array[Byte](fis.available)
+        fis.read(contents, 0, contents.length)
+        val asString = new String(contents, "ISO8859_1")
+        val newBytes = asString.getBytes("UTF8")
+        val fos = new FileOutputStream(newfile)
+        fos.write(newBytes)
+        fos.close()
+      } catch {
+        case e: Exception ⇒
+          e.printStackTrace()
+      }
+    }
+
 
     /**
       * Will read a CSV file from the path specified 
@@ -136,18 +136,15 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
       }
     }
 
-    var array = ArrayBuffer[Array[String]]()
 
     convertFileToUtf8(s"$destinationPath/$originalFile", s"$destinationPath/$newFile")
 
-    val headerArray = ArrayBuffer[Array[String]]()
 
+    def processHeader(header: ArrayBuffer[Array[String]], array: Array[String]): Unit = {
+      val stringifiedArray = array.mkString("", ",", "")
 
-    def headerProcessing(header: ArrayBuffer[Array[String]], array: Array[String]): Unit = {
-      val stringifiedArray = array.mkString 
-      
       // Ignore any empty lines
-      if (!stringifiedArray.matches("""^[h,\S*]+$""")) {
+      if (!stringifiedArray.matches("""^[h\s*$]""")) {
 
         // Process the columns which have words Week ending
         if (stringifiedArray.contains("Week ending")) {
@@ -157,43 +154,67 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
         // Process the columns which the word state
         if (stringifiedArray.contains("State"))
           header += Array("State")
-        
+
         // Process the columns which have months of the year with the day of the month. Have to do some hackery here in order to put all of the columns which are related to Week ending in one column
         val dayOfMonthRegEx = """(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,}""".r // Regular expression to match the month with the day and comma
         val monthAndDayMatch = dayOfMonthRegEx.findAllIn(stringifiedArray)
-        
+
         if (monthAndDayMatch.length == 3) {
-          headerArray.zipWithIndex.foreach {
+          header.zipWithIndex.foreach {
             case (weekEndingArray: Array[String], index: Int) ⇒
               if (weekEndingArray.mkString == "Week ending") {
 
                 var arrayBuffer = ArrayBuffer[String](weekEndingArray(0))
-                
-                dayOfMonthRegEx.findAllIn(array.mkString).toList.foreach { line ⇒
+
+                dayOfMonthRegEx.findAllIn(stringifiedArray).toList.foreach { line ⇒
                   arrayBuffer += line
                 }
-                
-                headerArray(index) = arrayBuffer.toArray 
+
+                header(index) = arrayBuffer.toArray
               }
           }
         }
-        
-        // Process the columns which have the years
-        val yearsRegex = """(\d\d\d\d-\d\d\d\d)""".r
-        val yearsMatch = yearsRegex.findAllIn(stringifiedArray)
-        
-        if (yearsRegex.findAllIn(stringifiedArray).length == 1) {
-          header += yearsMatch.toArray
+
+        // Process the columns which have the years for example 2012-2016
+        val toAndFromYearsRegex = """(\d\d\d\d-\d\d\d\d)""".r
+        val twoAndFromYearsMatched = toAndFromYearsRegex.findAllIn(stringifiedArray)
+
+        if (toAndFromYearsRegex.findAllIn(stringifiedArray).length == 1) {
+          header += twoAndFromYearsMatched.toArray
+        }
+
+        // Process the lines which have the years columns - for example 2016 or 2017
+        val prepared = stringifiedArray.replace("\"", "")
+        val yearsRegex = """(\d\d\d\d,\d\d\d\d,\d\d\d\d)""".r
+        val yearMatched = yearsRegex.findAllIn(stringifiedArray)
+
+        if (yearsRegex.findAllIn(prepared).length == 1) {
+
+          // Need to find the array holding the week ending
+          header.zipWithIndex.foreach {
+            case (weekEndingArray: Array[String], index: Int) ⇒
+              if (weekEndingArray.mkString.contains("Week ending")) {
+                
+                val t = yearsRegex.findAllIn(prepared).toArray.mkString("", " ", "").split(",")
+                
+                header(0)(1) = header(0)(1).concat(" " + t(0))
+                header(0)(2) = header(0)(2).concat(" " + t(1))
+                header(0)(3) = header(0)(3).concat(" " + t(2))
+              }
+          }
         }
       }
     }
 
+    var array = ArrayBuffer[Array[String]]()
+    val headerArray = ArrayBuffer[Array[String]]()
+    
     readCsvFile(s"$destinationPath/$newFile")
       .zipWithIndex.foreach {
       case (a: Array[String], _) ⇒
         a(1) match {
           case "\"t\"" ⇒ // Ignore titles
-          case "\"h\"" ⇒ headerProcessing(headerArray, a); array += a
+          case "\"h\"" ⇒ processHeader(headerArray, a); array += a
           case "\"u\"" ⇒ array += a
           case "\"d\"" ⇒ array += a
           case "\"c\"" ⇒ // Ignore end of file
