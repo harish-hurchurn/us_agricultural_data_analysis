@@ -11,6 +11,8 @@
             <option value="$PROJECT_DIR$/csv_processing" />
             <option value="$PROJECT_DIR$/csv_processing/project" />
             <option value="$PROJECT_DIR$/project" />
+            <option value="$PROJECT_DIR$/soybean_processing" />
+            <option value="$PROJECT_DIR$/soybean_processing/project" />
           </set>
         </option>
         <option name="resolveSbtClassifiers" value="true" />

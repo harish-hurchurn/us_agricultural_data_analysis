@@ -4,6 +4,8 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/csvPreprocessing.iml" filepath="$PROJECT_DIR$/.idea/modules/csvPreprocessing.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/csvPreprocessing-build.iml" filepath="$PROJECT_DIR$/.idea/modules/csvPreprocessing-build.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/soybeanProcessing.iml" filepath="$PROJECT_DIR$/.idea/modules/soybeanProcessing.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/soybeanProcessing-build.iml" filepath="$PROJECT_DIR$/.idea/modules/soybeanProcessing-build.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/usAgricultureAnalysis.iml" filepath="$PROJECT_DIR$/.idea/modules/usAgricultureAnalysis.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/usAgricultureAnalysis-build.iml" filepath="$PROJECT_DIR$/.idea/modules/usAgricultureAnalysis-build.iml" />
     </modules>

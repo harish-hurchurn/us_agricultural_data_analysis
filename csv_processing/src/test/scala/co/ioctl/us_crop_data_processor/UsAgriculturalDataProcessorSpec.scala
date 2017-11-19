@@ -1,4 +1,4 @@
-package co.ioctl.us_agricultural_data_processor
+package co.ioctl.us_crop_data_processor
 
 import org.scalatest.{FreeSpec, Matchers}
 

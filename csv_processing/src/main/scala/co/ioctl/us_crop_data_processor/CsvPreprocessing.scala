@@ -1,4 +1,4 @@
-package co.ioctl.us_agricultural_data_processor
+package co.ioctl.us_crop_data_processor
 
 import scala.collection.mutable.ArrayBuffer
 
@@ -11,9 +11,9 @@ import scala.collection.mutable.ArrayBuffer
 case class UsAggricultureDataFileUtils(destinationPath: String) {
   /**
     * A utility to convert a files contents to UTF8
-    * 
+    *
     * @param originalFile The name and path of the original file which is to be converted
-    * @param newfile The name and path where the newly converted file is to be stored
+    * @param newfile      The name and path where the newly converted file is to be stored
     */
   def convertFileToUtf8(originalFile: String, newfile: String): Unit = {
     try {
@@ -74,15 +74,15 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
     unzipFile(s"$destinationPath/data.zip", s"$destinationPath")
   }
 
-  
+
   /**
     * This method will go through the downloaded CSV file and remove elements of the file which is 
     * pertinent 
-    * 
+    *
     * @return A List of CSV lines which we are interested in
     */
   def sanitizeCsvFile(originalFile: String, newFile: String): Unit = {
-    
+
     /**
       * Will read a CSV file from the path specified 
       *
@@ -110,11 +110,12 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
       rows.toList
     }
     
+
     /**
       * Writes the contents to a file on disk 
       *
       * @param filename the name of the file to be written
-      * @param data the data to be written
+      * @param data     the data to be written
       */
     def writeCsvFile(filename: String, data: List[Array[String]]): Unit = {
       import java.io.{BufferedWriter, Closeable, FileOutputStream, OutputStreamWriter}
@@ -134,33 +135,44 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
           }
       }
     }
-    
+
     var array = ArrayBuffer[Array[String]]()
-    
+
     convertFileToUtf8(s"$destinationPath/$originalFile", s"$destinationPath/$newFile")
+    
+    val headerArray = ArrayBuffer[String]()
+
+
+    def headerProcessing(header: ArrayBuffer[String], array: Array[String]): Unit = {
+      println(array.mkString)
+      
+      if (!array.mkString.matches("""^[h,\S*]+$""")) {
+        headerArray += array.mkString
+      }
+    }
 
     readCsvFile(s"$destinationPath/$newFile")
-      .zipWithIndex.foreach { 
+      .zipWithIndex.foreach {
       case (a: Array[String], _) ⇒
         a(1) match {
           case "\"t\"" ⇒ // Ignore titles
-          case "\"h\"" ⇒ array += a
+          case "\"h\"" ⇒ headerProcessing(headerArray, a); array += a
           case "\"u\"" ⇒ array += a
           case "\"d\"" ⇒ array += a
           case "\"c\"" ⇒ // Ignore end of file
         }
     }
-    
+
     writeCsvFile(newFile, array.toList)
   }
 }
 
 object CsvPreprocessing extends App {
   val usAggricultureDataFileUtils = UsAggricultureDataFileUtils(destinationPath = args(0))
-  
+
   // Download the US agriculture data file
   usAggricultureDataFileUtils.downloadData()
-  
+
   // Load the original file and remove any entries which we are not interested in and write the new file to disk
   usAggricultureDataFileUtils.sanitizeCsvFile("prog_p01b_t011.csv", "sanatized_prog_p01b_t011.csv")
 }

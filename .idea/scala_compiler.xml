@@ -15,7 +15,7 @@
     <option name="featureWarnings" value="true" />
     <option name="explainTypeErrors" value="true" />
     <option name="continuations" value="true" />
-    <profile name="SBT 2" modules="usAgricultureAnalysis,csvPreprocessing">
+    <profile name="SBT 2" modules="usAgricultureAnalysis,csvPreprocessing,soybeanProcessing">
       <option name="deprecationWarnings" value="true" />
       <option name="uncheckedWarnings" value="true" />
       <parameters>
