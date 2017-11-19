@@ -144,20 +144,23 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
 
 
     def headerProcessing(header: ArrayBuffer[Array[String]], array: Array[String]): Unit = {
-      if (!array.mkString.matches("""^[h,\S*]+$""")) {
+      val stringifiedArray = array.mkString 
+      
+      // Ignore any empty lines
+      if (!stringifiedArray.matches("""^[h,\S*]+$""")) {
 
-        if (array.mkString.contains("Week ending")) {
+        // Process the columns which have words Week ending
+        if (stringifiedArray.contains("Week ending")) {
           header += Array("Week ending")
         }
 
-        if (array.mkString.contains("State"))
+        // Process the columns which the word state
+        if (stringifiedArray.contains("State"))
           header += Array("State")
         
-        //
-        // Have to do some hackery here in order to put all of the columns which are related to Week ending in one column
-        //
+        // Process the columns which have months of the year with the day of the month. Have to do some hackery here in order to put all of the columns which are related to Week ending in one column
         val dayOfMonthRegEx = """(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,}""".r // Regular expression to match the month with the day and comma
-        val monthAndDayMatch = dayOfMonthRegEx.findAllIn(array.mkString)
+        val monthAndDayMatch = dayOfMonthRegEx.findAllIn(stringifiedArray)
         
         if (monthAndDayMatch.length == 3) {
           headerArray.zipWithIndex.foreach {
@@ -173,6 +176,14 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
                 headerArray(index) = arrayBuffer.toArray 
               }
           }
+        }
+        
+        // Process the columns which have the years
+        val yearsRegex = """(\d\d\d\d-\d\d\d\d)""".r
+        val yearsMatch = yearsRegex.findAllIn(stringifiedArray)
+        
+        if (yearsRegex.findAllIn(stringifiedArray).length == 1) {
+          header += yearsMatch.toArray
         }
       }
     }
