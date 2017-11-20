@@ -1,7 +1,5 @@
 package co.ioctl.us_crop_data_processor
 
-import scala.collection.mutable.ArrayBuffer
-
 /**
   * This class provides a set of methods which will allow for the download of US Aggricultural data 
   * and will produce a new CSV file with the data sanitized ready for consumption by other tools
@@ -59,6 +57,7 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
     * @return A List of CSV lines which we are interested in
     */
   def sanitizeCsvFile(originalFile: String, newFile: String): Unit = {
+    import scala.collection.mutable.ArrayBuffer
     /**
       * A utility to convert a files contents to UTF8
       *
@@ -87,7 +86,7 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
       * Will read a CSV file from the path specified 
       *
       * @param path The path where the file can be found
-      * @return A List of array where each element of the array is a line of CSV
+      * @return A List of csvLine where each element of the csvLine is a line of CSV
       */
     def readCsvFile(path: String): List[Array[String]] = {
       def using[A <: {def close() : Unit}, B](resource: A)(f: A => B): B =
@@ -135,52 +134,50 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
           }
       }
     }
-    
+
     convertFileToUtf8(s"$destinationPath/$originalFile", s"$destinationPath/$newFile")
-    
-    def processHeader(header: ArrayBuffer[Array[String]], array: Array[String]): Unit = {
-      val stringifiedArray = array.mkString("", ",", "")
 
-      // Ignore any empty lines
-      if (!stringifiedArray.matches("""^[h\s*$]""")) {
+    /**
+      * Process the headers
+      * 
+      * @param csvLine
+      * @return
+      */
+    def processHeader(csvLine: Array[String], header: ArrayBuffer[Array[String]]): ArrayBuffer[Array[String]] = {
+      val stringifiedArray = csvLine.mkString("", ",", "") // The line which is being processed but split by commas
+      
+      // Process the columns which have words Week ending
+      if (stringifiedArray.contains("Week ending")) {
+        header += Array("Week ending")
+      }
 
-        // Process the columns which have words Week ending
-        if (stringifiedArray.contains("Week ending")) {
-          header += Array("Week ending")
-        }
+      // Process the columns which the word state
+      if (stringifiedArray.contains("State"))
+        header += Array("State")
+      
+      // Process the columns which have the word average and create a column called Condition
+      if (stringifiedArray.contains("Average"))
+        header += Array("Condition")
+      
+      // Process the columns which have months of the year with the day of the month. Have to do some hackery here in order to put all of the columns which are related to Week ending in one column
+      val dayOfMonthRegEx = """(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,}""".r // Regular expression to match the month with the day and comma
+      val monthAndDayMatch = dayOfMonthRegEx.findAllIn(stringifiedArray)
 
-        // Process the columns which the word state
-        if (stringifiedArray.contains("State"))
-          header += Array("State")
-
-        // Process the columns which have months of the year with the day of the month. Have to do some hackery here in order to put all of the columns which are related to Week ending in one column
-        val dayOfMonthRegEx = """(January|February|March|April|May|June|July|August|September|October|November|December) \d{1,}""".r // Regular expression to match the month with the day and comma
-        val monthAndDayMatch = dayOfMonthRegEx.findAllIn(stringifiedArray)
-
-        if (monthAndDayMatch.length == 3) {
-          header.zipWithIndex.foreach {
-            case (weekEndingArray: Array[String], index: Int) ⇒
-              if (weekEndingArray.mkString == "Week ending") {
-
-                var arrayBuffer = ArrayBuffer[String](weekEndingArray(0))
-
-                dayOfMonthRegEx.findAllIn(stringifiedArray).toList.foreach { line ⇒
-                  arrayBuffer += line
-                }
-
-                header(index) = arrayBuffer.toArray
+      if (monthAndDayMatch.length == 3) {
+        header.zipWithIndex.foreach {
+          case (weekEndingArray, index) ⇒
+            if (weekEndingArray.mkString == "Week ending") {
+              
+              var arrayBuffer = ArrayBuffer[String](weekEndingArray(0))
+              
+              dayOfMonthRegEx.findAllIn(stringifiedArray).toList.foreach { line ⇒
+                arrayBuffer += line
               }
-          }
+
+              header(index) = arrayBuffer.toArray
+            }
         }
-
-        // Process the columns which have the years for example 2012-2016
-        val toAndFromYearsRegex = """(\d\d\d\d-\d\d\d\d)""".r
-        val twoAndFromYearsMatched = toAndFromYearsRegex.findAllIn(stringifiedArray)
-
-        if (toAndFromYearsRegex.findAllIn(stringifiedArray).length == 1) {
-          header += twoAndFromYearsMatched.toArray
-        }
-
+        
         // Process the lines which have the years columns - for example 2016 or 2017
         val prepared = stringifiedArray.replace("\"", "")
         val yearsRegex = """(\d\d\d\d,\d\d\d\d,\d\d\d\d)""".r
@@ -188,7 +185,7 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
 
         if (yearsRegex.findAllIn(prepared).length == 1) {
 
-          // Need to find the array holding the week ending
+          // Need to find the csvLine holding the week ending
           header.zipWithIndex.foreach {
             case (weekEndingArray: Array[String], index: Int) ⇒
               if (weekEndingArray.mkString.contains("Week ending")) {
@@ -198,9 +195,9 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
                 import java.time.LocalDate
                 import java.time.format.DateTimeFormatter
                 import java.util.Locale
-                
+
                 val formatter = DateTimeFormatter.ofPattern("MMMM d yyyy", Locale.ENGLISH)
-                
+
                 header(0)(1) = LocalDate.parse(header(0)(1).concat(" " + t(0)), formatter).toString
                 header(0)(2) = LocalDate.parse(header(0)(2).concat(" " + t(1)), formatter).toString
                 header(0)(3) = LocalDate.parse(header(0)(3).concat(" " + t(2)), formatter).toString
@@ -208,24 +205,39 @@ case class UsAggricultureDataFileUtils(destinationPath: String) {
           }
         }
       }
+      
+      header
     }
 
-    var array = ArrayBuffer[Array[String]]()
-    val headerArray = ArrayBuffer[Array[String]]()
+    /**
+      * Process the units
+      * 
+      * @param csvLine
+      */
+    def processUnit(csvLine: Array[String], unitInfo: ArrayBuffer[Array[String]]): ArrayBuffer[Array[String]] = {
+      val stringifiedArray = csvLine.mkString("", ",", "") // The line which is being processed but split by commas
+      
+      if (stringifiedArray.contains("(percent)"))
+        unitInfo += Array("Percent")
+
+      unitInfo
+    }
+
+    val csvFile = ArrayBuffer[Array[String]]()
     
     readCsvFile(s"$destinationPath/$newFile")
       .zipWithIndex.foreach {
-      case (a: Array[String], _) ⇒
-        a(1) match {
+      case (csvLine, _) ⇒
+        csvLine(1) match {
           case "\"t\"" ⇒ // Ignore titles
-          case "\"h\"" ⇒ processHeader(headerArray, a); array += a
-          case "\"u\"" ⇒ array += a
-          case "\"d\"" ⇒ array += a
+          case "\"h\"" ⇒ processHeader(csvLine, csvFile)
+          case "\"u\"" ⇒ processUnit(csvLine, csvFile)
+          case "\"d\"" ⇒ 
           case "\"c\"" ⇒ // Ignore end of file
         }
     }
 
-    writeCsvFile(newFile, array.toList)
+    writeCsvFile(newFile, csvFile.toList)
   }
 }
 
